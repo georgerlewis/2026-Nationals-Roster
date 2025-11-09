@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>2026 Nationals Roster Builder </title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+
+
+<style>
+:root {
+  --nat-red: #ba0c2f;
+  --nat-blue: #0c2340;
+  --panel: #f3f7ff;
+  --bg: #ffffff;
+  --green: #1e7e34;
+}
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  margin: 0;
+  background: var(--bg);
+  color: var(--nat-blue);
+}
+header {
+  background: linear-gradient(90deg, var(--nat-red), var(--nat-blue));
+  color: #fff;
+  padding: 16px 20px;
+}
+header h1 { margin: 0; font-size: 18px; }
+.wrap {
+  display: flex; gap: 16px; padding: 16px; align-items: flex-start; flex-wrap: wrap;
+}
+.col {
+  flex: 1; min-width: 320px; border: 2px solid var(--nat-blue);
+  border-radius: 8px; padding: 12px; background: var(--panel);
+}
+h2 { color: var(--nat-red); margin-top: 0; }
+.players-list, .roster-list {
+  max-height: 62vh; overflow: auto; padding: 6px;
+  background: #fff; border-radius: 6px; border: 1px solid #e6e9f0;
+}
+.pos-header {
+  font-weight: 700; color: var(--nat-blue); margin-top: 10px; margin-bottom: 6px;
+}
+.player-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 6px 4px; border-bottom: 1px solid #efeff5;
+}
+.player-meta { font-size: 14px; color: #111; }
+.tag {
+  font-size: 12px; padding: 3px 6px; border-radius: 6px; color: white; margin-left: 8px;
+}
+.tag.fa { background: var(--nat-red); }
+.tag.int { background: var(--nat-blue); }
+.tag.other { background: var(--green); }
+button {
+  background: var(--nat-blue); color: white; border: none; padding: 6px 8px;
+  border-radius: 6px; cursor: pointer;
+}
+button.secondary { background: #ffffff; color: var(--nat-blue); border: 1px solid var(--nat-blue); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+select, input[type="number"] {
+  padding: 6px; border-radius: 6px; border: 1px solid #cfd6ea;
+}
+.summary {
+  margin-top: 12px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e6e9f0;
+}
+.note {
+  font-size: 13px; color: #333; margin-top: 8px; background: #fff;
+  padding: 8px; border-radius: 6px; border: 1px dashed #d7dbe8;
+}
+footer { padding: 12px 18px; font-size: 13px; color: #333; }
+small.muted { color: #666; }
+.inline { display: inline-flex; gap: 8px; align-items: center; }
+.danger { color: #b00020; font-weight: 700; }
+
+/* --- Summary Modal polish --- */
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:9999;
+  background: rgba(12, 35, 64, 0.45); /* nat-blue tint */
+  align-items:center; justify-content:center;
+}
+/* Smaller, screenshot-optimized modal */
+.modal {
+  background: #fff;
+  width: min(500px, 94vw);
+  max-height: 70vh;             /* fits on phone without scrolling */
+  overflow-y: auto;             /* internal scroll if needed */
+  border-radius: 12px;
+  border: 1px solid #e6e9f0;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  font-size: 15px;
+  line-height: 1.4;
+}
+.modal-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; background: linear-gradient(90deg, #f7f9ff, #ffffff);
+  border-bottom:1px solid #eef1f7;
+}
+.modal-title {
+  margin:0; font-size:18px; color: var(--nat-blue);
+}
+.modal-body {
+  padding: 12px 14px;
+  background:#fff;
+}
+/* --- Mobile readability for summary --- */
+@media (max-width: 480px) {
+  .modal { width: 95vw; max-height: 65vh; }
+  .modal-title { font-size: 18px; }
+  .modal-body { padding: 12px; }
+  .section-card { padding: 10px; }
+  .section-title { font-size: 15px; }
+  .clean-list li { font-size: 14px; }
+  .lineup-table th, .lineup-table td { font-size: 14px; padding: 4px 6px; }
+  .modal-actions { padding: 10px 12px; }
+}
+
+/* Two-column block for SP/Bullpen */
+.grid-2 {
+  display:grid; gap:12px;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 720px) {.grid-2{ grid-template-columns: 1fr; }}
+.section-card {
+  border:1px solid #eef1f7; border-radius:10px; background:#fff;
+  padding:12px;
+}
+.section-title {
+  margin:0 0 8px 0; font-size:14px; letter-spacing:.2px; color:#24324a;
+}
+.clean-list { margin:0; padding-left:18px; }
+.clean-list li { margin:4px 0; }
+
+.lineup-table {
+  width:100%; border-collapse: collapse; margin-top:4px;
+}
+.lineup-table th, .lineup-table td {
+  text-align:left; padding:6px 8px; border-bottom:1px solid #f1f3f9; font-size:14px;
+}
+.lineup-table th { color:#4a5568; font-weight:600; background:#fbfcff; }
+.lineup-table tr:last-child td { border-bottom:none; }
+
+.modal-actions {
+  padding: 10px 16px; border-top:1px solid #eef1f7; background:#fff;
+  display:flex; justify-content:flex-end; gap:8px;
+}
+</style>
+</head>
+<body>
+
+<header><h1>2026 Nationals Roster Builder (Internal + Trade/Other)</h1></header>
+
+<div class="wrap">
+  <div class="col" style="max-width:700px;">
+    <h2>Player Selection</h2>
+    <div class="inline" style="margin-bottom:10px;">
+      <label><strong>Payroll target:</strong></label>
+      <select id="payrollSelect" style="margin-left:8px;">
+        <option value="118000000">2025 — $118,000,000</option>
+        <option value="162000000">2021 — $162,000,000</option>
+        <option value="208000000">2019 — $208,000,000</option>
+        <option value="custom">Custom...</option>
+      </select>
+      <input id="customBudget" type="number" placeholder="custom budget" style="display:none;margin-left:8px;">
+      <div style="flex:1"></div>
+      <button id="shareTwitter">Share on Twitter</button>
+    </div>
+    <div class="players-list" id="playersList" aria-live="polite"></div>
+  </div>
+
+  <div class="col">
+    <h2>Your Roster & Budget</h2>
+    <div class="summary">
+      <div><strong>Baseline payroll:</strong> $<span id="baselineDisplay">62,000,000</span></div>
+      <div class="note">
+        <strong>This includes:</strong> AAVs for players no longer on the 40-man (~$37M),
+        projected full-season injuries (~$7M), and projected player benefits (~$18M).
+      </div>
+      <div style="margin-top:8px;">
+        <div><strong>Selected player AAVs:</strong> $<span id="selectedAAV">0</span></div>
+        <div><strong>Total payroll:</strong> $<span id="totalPayroll">62,000,000</span></div>
+        <div><strong>Target:</strong> $<span id="payrollTargetDisplay">118,000,000</span></div>
+        <div><strong>Remaining:</strong> <span id="remainingToTarget">$56,000,000</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <strong>Roster (by position)</strong>
+      <div class="roster-list" id="rosterList"></div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label><strong>Designated Hitter (DH)</strong></label><br>
+      <select id="dhSelect"><option value="">(select DH)</option></select>
+    </div>
+
+    <!-- Lineup UI -->
+    <div style="margin-top:12px;">
+      <label><strong>Lineup (set your batting order)</strong></label>
+      <div id="lineupList" class="players-list" style="max-height: 40vh;"></div>
+      <small class="muted">Lineup consists of your selected C, 1B, 2B, 3B, SS, three OFs, and the DH (if selected).</small>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <!-- replaced PNG button with Show Summary -->
+      <button id="showSummary" class="secondary">Show Summary</button>
+      <button id="copyLink" class="secondary">Copy share URL</button>
+    </div>
+  </div>
+</div>
+
+<footer><small class="muted">Multi-position players will prompt you to choose a position when added.
+“Other” players are temporary and disappear when removed or page reloads.</small></footer>
+
+<!-- Summary Modal (polished) -->
+<div id="summaryModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="summaryTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="summaryTitle" class="modal-title">Roster Summary</h3>
+      <button id="closeSummary" class="secondary" aria-label="Close summary">Close</button>
+    </div>
+    <div id="summaryContent" class="modal-body"></div>
+    <div class="modal-actions">
+      <button id="closeSummaryBottom" class="secondary">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASELINE_PAYROLL = 62000000;
+let payrollTarget = 118000000;
+let rosterAssignments = {};
+let dh = null;
+
+const ROSTER_LIMITS = { SP:5, RP:8, C:1, "1B":1, "2B":1, "3B":1, SS:1, OF:3, Bench:5 };
+const BENCH_ELIGIBLE = ["C","1B","2B","3B","SS","OF"];
+const POSITION_ORDER = ["SP","RP","C","1B","2B","3B","SS","OF","Bench"];
+
+const PLAYERS_FROM_EXCEL = [
+  {"id":1,"name":"Keibert Ruiz","pos_raw":"C","type":"Internal","projAAV":5375000,"posList":["C"]},
+  {"id":2,"name":"Luis García Jr.","pos_raw":"2B, 1B","type":"Internal","projAAV":7000000,"posList":["2B","1B"]},
+  {"id":3,"name":"MacKenzie Gore","pos_raw":"SP","type":"Internal","projAAV":4700000,"posList":["SP"]},
+  {"id":4,"name":"Josiah Gray","pos_raw":"SP, RP","type":"Internal","projAAV":1350000,"posList":["SP","RP"]},
+  {"id":5,"name":"Riley Adams","pos_raw":"C","type":"Internal","projAAV":1500000,"posList":["C"]},
+  {"id":6,"name":"CJ Abrams","pos_raw":"SS, 2B","type":"Internal","projAAV":5600000,"posList":["SS","2B"]},
+  {"id":7,"name":"Jake Irvin","pos_raw":"SP, RP","type":"Internal","projAAV":3300000,"posList":["SP","RP"]},
+  {"id":8,"name":"Cade Cavalli","pos_raw":"SP, RP","type":"Internal","projAAV":1300000,"posList":["SP","RP"]},
+  {"id":9,"name":"Jacob Young","pos_raw":"OF","type":"Internal","projAAV":780000,"posList":["OF"]},
+  {"id":10,"name":"Mitchell Parker","pos_raw":"SP, RP","type":"Internal","projAAV":780000,"posList":["SP","RP"]},
+  {"id":11,"name":"Jose A. Ferrer","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":12,"name":"James Wood","pos_raw":"OF","type":"Internal","projAAV":780000,"posList":["OF"]},
+  {"id":13,"name":"Dylan Crews","pos_raw":"OF","type":"Internal","projAAV":780000,"posList":["OF"]},
+  {"id":14,"name":"Brad Lord","pos_raw":"SP, RP","type":"Internal","projAAV":780000,"posList":["SP","RP"]},
+  {"id":15,"name":"Daylen Lile","pos_raw":"OF","type":"Internal","projAAV":780000,"posList":["OF"]},
+  {"id":16,"name":"Brady House","pos_raw":"3B","type":"Internal","projAAV":780000,"posList":["3B"]},
+  {"id":17,"name":"Robert Hassell III","pos_raw":"OF","type":"Internal","projAAV":780000,"posList":["OF"]},
+  {"id":18,"name":"Nasim Nunez","pos_raw":"SS, 2B","type":"Internal","projAAV":780000,"posList":["SS","2B"]},
+  {"id":19,"name":"Andres Chapparo","pos_raw":"1B","type":"Internal","projAAV":780000,"posList":["1B"]},
+  {"id":20,"name":"Jose Tena","pos_raw":"2B, 3B","type":"Internal","projAAV":780000,"posList":["2B","3B"]},
+  {"id":21,"name":"Clayton Beeter","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":22,"name":"Cole Henry","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":23,"name":"PJ Poulin","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":24,"name":"Julian Fernandez","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":25,"name":"Konnor Pilkington","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":26,"name":"Orlando Ribalta","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":27,"name":"Jackson Rutledge","pos_raw":"RP","type":"Internal","projAAV":780000,"posList":["RP"]},
+  {"id":28,"name":"Drew Millas","pos_raw":"C","type":"Internal","projAAV":780000,"posList":["C"]},
+  {"id":30,"name":"Dylan Cease","pos_raw":"SP","type":"FA","projAAV":26000000,"posList":["SP"]},
+  {"id":31,"name":"Michael King","pos_raw":"SP","type":"FA","projAAV":22000000,"posList":["SP"]},
+  {"id":33,"name":"Zach Eflin","pos_raw":"SP","type":"FA","projAAV":15000000,"posList":["SP"]},
+  {"id":34,"name":"Max Scherzer","pos_raw":"SP","type":"FA","projAAV":12500000,"posList":["SP"]},
+  {"id":35,"name":"Dustin May","pos_raw":"SP","type":"FA","projAAV":15000000,"posList":["SP"]},
+  {"id":36,"name":"Ryan Helsley","pos_raw":"RP","type":"FA","projAAV":10800000,"posList":["RP"]},
+  {"id":37,"name":"Devin Williams","pos_raw":"RP","type":"FA","projAAV":14000000,"posList":["RP"]},
+  {"id":38,"name":"Robert Suarez","pos_raw":"RP","type":"FA","projAAV":15000000,"posList":["RP"]},
+  {"id":39,"name":"Pete Fairbanks","pos_raw":"RP","type":"FA","projAAV":8000000,"posList":["RP"]},
+  {"id":40,"name":"Hunter Harvey","pos_raw":"RP","type":"FA","projAAV":8000000,"posList":["RP"]},
+  {"id":41,"name":"JT Realmuto","pos_raw":"C","type":"FA","projAAV":15000000,"posList":["C"]},
+  {"id":42,"name":"Danny Jansen","pos_raw":"C","type":"FA","projAAV":8000000,"posList":["C"]},
+  {"id":43,"name":"Josh Naylor","pos_raw":"1B","type":"FA","projAAV":20000000,"posList":["1B"]},
+  {"id":44,"name":"Josh Bell","pos_raw":"1B","type":"FA","projAAV":5000000,"posList":["1B"]},
+  {"id":45,"name":"Ryan O'Hearn","pos_raw":"1B","type":"FA","projAAV":12000000,"posList":["1B"]},
+  {"id":46,"name":"Rhys Hoskins","pos_raw":"1B","type":"FA","projAAV":5000000,"posList":["1B"]},
+  {"id":47,"name":"Bo Bichette","pos_raw":"2B, SS, 3B","type":"FA","projAAV":22000000,"posList":["2B", "SS", "3B"]},
+  {"id":48,"name":"Gleyber Torres","pos_raw":"2B","type":"FA","projAAV":18000000,"posList":["2B"]},
+  {"id":49,"name":"Isiah Kiner-Falefa","pos_raw":"2B, SS, 3B","type":"FA","projAAV":6000000,"posList":["2B", "SS", "3B"]},
+  {"id":50,"name":"Ha-Seong Kim","pos_raw":"SS","type":"FA","projAAV":15000000,"posList":["SS"]},
+  {"id":51,"name":"Kyle Schwarber","pos_raw":"OF","type":"FA","projAAV":28000000,"posList":["OF"]},
+];
+
+let tempId = 1000;
+
+function countAssigned(){ const c={}; Object.values(rosterAssignments).forEach(p=>c[p]=(c[p]||0)+1); return c; }
+function sumSelectedAAV(){ let s=0; for(const id in rosterAssignments){const p=PLAYERS_FROM_EXCEL.find(x=>x.id==id); if(p?.projAAV)s+=p.projAAV;} return s;}
+
+const playersListEl=document.getElementById("playersList"), rosterListEl=document.getElementById("rosterList"),
+selectedAAVEl=document.getElementById("selectedAAV"), totalPayrollEl=document.getElementById("totalPayroll"),
+payrollTargetDisplayEl=document.getElementById("payrollTargetDisplay"), remainingToTargetEl=document.getElementById("remainingToTarget"),
+dhSelectEl=document.getElementById("dhSelect"), payrollSelectEl=document.getElementById("payrollSelect"),
+customBudgetEl=document.getElementById("customBudget");
+
+// ---------------- SHARE: encode/decode state into the URL ----------------
+function encodeState(obj){
+  const json = JSON.stringify(obj);
+  const b64 = btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+  return b64;
+}
+function decodeState(b64){
+  try{
+    const padded = b64.replace(/-/g,'+').replace(/_/g,'/') + '==='.slice((b64.length + 3) % 4);
+    const json = decodeURIComponent(escape(atob(padded)));
+    return JSON.parse(json);
+  }catch(e){ console.warn('Invalid share state', e); return null; }
+}
+function currentShareState(){
+  return { v:1, rosterAssignments, dh, payrollTarget, lineup };
+}
+function applyShareState(state){
+  if(!state || state.v!==1) return false;
+  if (typeof state.payrollTarget==='number') payrollTarget = state.payrollTarget;
+
+  rosterAssignments = {};
+  if (state.rosterAssignments && typeof state.rosterAssignments==='object'){
+    for (const id in state.rosterAssignments){
+      const pid = Number(id);
+      const pos = state.rosterAssignments[id];
+      if (PLAYERS_FROM_EXCEL.some(p=>p.id===pid) && POSITION_ORDER.includes(pos)){
+        rosterAssignments[pid] = pos;
+      }
+    }
+  }
+  dh = (typeof state.dh==='number' && rosterAssignments[state.dh]==='Bench') ? state.dh : null;
+  lineup = Array.isArray(state.lineup) ? state.lineup.filter(id => PLAYERS_FROM_EXCEL.some(p=>p.id===id)) : [];
+
+  // reflect payroll select UI
+  const preset = ['118000000','162000000','208000000'].find(v => Number(v)===payrollTarget);
+  if (preset){
+    payrollSelectEl.value = preset;
+    customBudgetEl.style.display = 'none';
+  } else {
+    payrollSelectEl.value = 'custom';
+    customBudgetEl.style.display = 'inline';
+    customBudgetEl.value = String(payrollTarget);
+  }
+  renderAll();
+  return true;
+}
+// Load state from ?s= or #s=
+(function loadStateFromURL(){
+  const url = new URL(window.location.href);
+  const fromQuery = url.searchParams.get('s');
+  const fromHash = new URLSearchParams(url.hash.replace(/^#/, '')).get('s');
+  const token = fromQuery || fromHash;
+  if (token){
+    const st = decodeState(token);
+    if (st) applyShareState(st);
+  }
+})();
+
+// Lineup state & helpers
+let lineup = []; // array of player IDs in batting order
+
+function getRosteredByPos(pos){
+  return Object.keys(rosterAssignments)
+    .filter(id => rosterAssignments[id] === pos)
+    .map(id => PLAYERS_FROM_EXCEL.find(p => p.id == id))
+    .filter(Boolean);
+}
+
+function getEligibleHittersPool(){
+  const hitters = [];
+  ['C','1B','2B','3B','SS'].forEach(pos=>{
+    hitters.push(...getRosteredByPos(pos).slice(0,1));
+  });
+  hitters.push(...getRosteredByPos('OF').slice(0,3));
+  if (dh) {
+    const dhP = PLAYERS_FROM_EXCEL.find(p=>p.id==dh);
+    if (dhP) hitters.push(dhP);
+  }
+  const seen = new Set();
+  return hitters.filter(p=> (seen.has(p.id) ? false : (seen.add(p.id), true)));
+}
+
+function syncLineupWithRoster(){
+  const pool = getEligibleHittersPool().map(p => p.id);
+  const keep = lineup.filter(id => pool.includes(id));
+  const missing = pool.filter(id => !keep.includes(id));
+  lineup = [...keep, ...missing];
+}
+
+function moveLineup(id, dir){
+  const idx = lineup.indexOf(id);
+  if (idx < 0) return;
+  const swapWith = idx + (dir === 'up' ? -1 : 1);
+  if (swapWith < 0 || swapWith >= lineup.length) return;
+  const tmp = lineup[idx];
+  lineup[idx] = lineup[swapWith];
+  lineup[swapWith] = tmp;
+  renderLineup();
+}
+
+function removeFromLineup(id){
+  lineup = lineup.filter(x => x !== id);
+  renderLineup();
+}
+
+function renderLineup(){
+  const box = document.getElementById('lineupList');
+  if (!box) return;
+  box.innerHTML = '';
+  syncLineupWithRoster();
+
+  lineup.forEach((id, i)=>{
+    const p = PLAYERS_FROM_EXCEL.find(x=>x.id==id);
+    if (!p) return;
+    const posLabel = (dh && id == dh) ? 'DH' : (rosterAssignments[id] || (p.posList[0] || ''));
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <div class="player-meta">
+        <strong>${i+1}.</strong> ${p.name} <span style="color:#333">(${posLabel})</span>
+      </div>
+      <div>
+        <button class="secondary" ${i===0?'disabled':''} onclick="moveLineup(${id}, 'up')">↑</button>
+        <button class="secondary" ${i===lineup.length-1?'disabled':''} onclick="moveLineup(${id}, 'down')">↓</button>
+        <button class="secondary" onclick="removeFromLineup(${id})">Remove</button>
+      </div>
+    `;
+    box.appendChild(row);
+  });
+}
+
+function renderPlayers(){
+  playersListEl.innerHTML="";
+  const positions=["SP","RP","C","1B","2B","3B","SS","OF"];
+  positions.forEach(pos=>{
+    const header=document.createElement("div");
+    header.className="pos-header"; header.textContent=pos;
+    playersListEl.appendChild(header);
+    PLAYERS_FROM_EXCEL
+      .filter(p=>p.posList.includes(pos))
+      .forEach(p=>playersListEl.appendChild(makePlayerRow(p, pos)));
+    const addBtn=document.createElement("button");
+    addBtn.textContent="Add Other (Trade or Not Listed)";
+    addBtn.style.margin="4px 0 8px 0";
+    addBtn.onclick=()=>addOtherPlayer(pos);
+    playersListEl.appendChild(addBtn);
+  });
+}
+
+function makePlayerRow(p, sectionPos){
+  const div=document.createElement("div"); div.className="player-row";
+  const assigned=rosterAssignments[p.id]!=undefined;
+  const left=document.createElement("div"); left.className="player-meta";
+  left.innerHTML=`<strong>${p.name}</strong> <span style="color:#333">(${p.posList.join(", ")})</span>
+    <span class="tag ${p.type==="FA"?"fa":p.type==="Other"?"other":"int"}">${p.type}</span>
+    <div style="font-size:12px;color:#444;">AAV: ${p.projAAV?("$"+p.projAAV.toLocaleString()):"—"}</div>`;
+  const right=document.createElement("div");
+  if(!assigned){
+    const b=document.createElement("button");
+    b.textContent="Add";
+    b.onclick = () => onAddClick(p.id, sectionPos);
+    right.appendChild(b);
+  } else {
+    const lbl=document.createElement("span");
+    lbl.textContent=`→ ${rosterAssignments[p.id]}`;
+    const rm=document.createElement("button");
+    rm.textContent="Remove";
+    rm.onclick=()=>removeFromRoster(p.id);
+    rm.style.marginLeft="8px";
+    right.appendChild(lbl);
+    right.appendChild(rm);
+  }
+  div.appendChild(left);div.appendChild(right);return div;
+}
+
+function addOtherPlayer(pos){
+  const name=prompt(`Enter name for Other (${pos}) player:`); if(!name)return;
+  let aavRaw=prompt(`Enter AAV for ${name} (e.g. 5M or 5000000):`); if(!aavRaw)return;
+  aavRaw=aavRaw.trim().toUpperCase(); let aavNum=0;
+  if(aavRaw.endsWith("M")) aavNum=parseFloat(aavRaw)*1e6; else aavNum=parseFloat(aavRaw);
+  if(isNaN(aavNum)||aavNum<=0){alert("Invalid AAV");return;}
+  const newP={id:tempId++,name,posList:[pos],type:"Other",projAAV:aavNum};
+  PLAYERS_FROM_EXCEL.push(newP);
+  rosterAssignments[newP.id]=pos;
+  renderAll();
+}
+
+function onAddClick(id, preferredPos) {
+  const p = PLAYERS_FROM_EXCEL.find(x => x.id == id);
+  if (!p || rosterAssignments[id]) return;
+
+  const counts = countAssigned();
+
+  if (
+    preferredPos &&
+    p.posList.includes(preferredPos) &&
+    ROSTER_LIMITS[preferredPos] &&
+    ((counts[preferredPos] || 0) < ROSTER_LIMITS[preferredPos])
+  ) {
+    rosterAssignments[id] = preferredPos;
+    renderAll();
+    return;
+  }
+
+  const alt = p.posList.find(pos =>
+    ROSTER_LIMITS[pos] && ((counts[pos] || 0) < ROSTER_LIMITS[pos])
+  );
+  if (alt) {
+    rosterAssignments[id] = alt;
+    renderAll();
+    return;
+  }
+
+  if (
+    p.posList.some(pos => BENCH_ELIGIBLE.includes(pos)) &&
+    ((counts["Bench"] || 0) < ROSTER_LIMITS["Bench"])
+  ) {
+    rosterAssignments[id] = "Bench";
+    renderAll();
+    return;
+  }
+
+  alert("No open slots for that player in the selected position (or elsewhere).");
+}
+
+function removeFromRoster(id){
+  delete rosterAssignments[id];
+  if(dh==id)dh=null;
+  renderAll();
+}
+
+function renderRoster(){
+  rosterListEl.innerHTML="";
+  POSITION_ORDER.forEach(pos=>{
+    const header=document.createElement("div");
+    const cnt=Object.values(rosterAssignments).filter(x=>x===pos).length;
+    header.className="pos-header"; header.textContent=`${pos} (${cnt}/${ROSTER_LIMITS[pos]||0})`;
+    rosterListEl.appendChild(header);
+    Object.keys(rosterAssignments).filter(id=>rosterAssignments[id]===pos).forEach(id=>{
+      const p=PLAYERS_FROM_EXCEL.find(x=>x.id==id);if(!p)return;
+      const d=document.createElement("div");d.className="player-row";
+      d.innerHTML=`<div class="player-meta"><strong>${p.name}</strong> <div style="font-size:12px;color:#444;">AAV: $${p.projAAV.toLocaleString()}</div></div>
+      <div><button onclick="removeFromRoster(${id})">Remove</button></div>`;
+      rosterListEl.appendChild(d);
+    });
+  });
+}
+
+// Only allow Bench players as DH options
+function renderDHSelector(){
+  dhSelectEl.innerHTML='<option value="">(select DH)</option>';
+
+  Object.keys(rosterAssignments)
+    .filter(id => rosterAssignments[id] === 'Bench')
+    .forEach(id=>{
+      const p=PLAYERS_FROM_EXCEL.find(x=>x.id==id);
+      if(p){
+        const o=document.createElement('option');
+        o.value=p.id;
+        o.textContent=`${p.name} (Bench)`;
+        dhSelectEl.appendChild(o);
+      }
+    });
+
+  const stillValid = dh && rosterAssignments[dh] === 'Bench';
+  dhSelectEl.value = stillValid ? dh : "";
+  dh = stillValid ? dh : null;
+
+  syncLineupWithRoster();
+  renderLineup();
+}
+
+dhSelectEl.onchange=()=>{ dh=dhSelectEl.value?Number(dhSelectEl.value):null; syncLineupWithRoster(); renderLineup(); };
+
+function renderBudget(){
+  const s=sumSelectedAAV(), total=BASELINE_PAYROLL+s, rem=payrollTarget-total;
+  selectedAAVEl.textContent=s.toLocaleString();
+  totalPayrollEl.textContent=total.toLocaleString();
+  payrollTargetDisplayEl.textContent=payrollTarget.toLocaleString();
+  remainingToTargetEl.textContent=(rem>=0?"$":"-$")+Math.abs(rem).toLocaleString();
+  remainingToTargetEl.className=rem<0?"danger":"";
+}
+
+payrollSelectEl.onchange=()=>{const v=payrollSelectEl.value;if(v==="custom"){customBudgetEl.style.display="inline";payrollTarget=Number(customBudgetEl.value||0);}else{customBudgetEl.style.display="none";payrollTarget=Number(v);}renderBudget();};
+customBudgetEl.oninput=()=>{payrollTarget=Number(customBudgetEl.value||0);renderBudget();};
+
+// Build summary HTML (compact, two-column; only total budget)
+function buildSummaryHtml(){
+  // Data
+  const sps = getRosteredByPos('SP').slice(0,5);
+  const rps = getRosteredByPos('RP');
+  const lineupRows = lineup.map((id, idx)=>{
+    const p = PLAYERS_FROM_EXCEL.find(x=>x.id==id);
+    if (!p) return null;
+    const posLabel = (dh && id==dh) ? 'DH' : (rosterAssignments[id] || (p.posList[0]||''));
+    return { num: idx+1, name: p.name, pos: posLabel };
+  }).filter(Boolean);
+
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+
+  const spList = sps.length
+    ? `<ol class="clean-list">${sps.map(p=>`<li>${p.name}</li>`).join('')}</ol>`
+    : `<em>No SP selected.</em>`;
+
+  const rpList = rps.length
+    ? `<ul class="clean-list">${rps.map(p=>`<li>${p.name}</li>`).join('')}</ul>`
+    : `<em>No RP selected.</em>`;
+
+  const lineupTable = lineupRows.length
+    ? `
+      <table class="lineup-table" aria-label="Batting Order">
+        <thead><tr><th>#</th><th>Player</th><th>Pos</th></tr></thead>
+        <tbody>
+          ${lineupRows.map(r=>`<tr><td>${r.num}</td><td>${r.name}</td><td>${r.pos}</td></tr>`).join('')}
+        </tbody>
+      </table>`
+    : `<em>No lineup set (needs C, 1B, 2B, 3B, SS, 3×OF, and DH if selected).</em>`;
+
+  return `
+    <div style="text-align:center; margin:2px 0 10px 0;">
+      <h4 style="margin:0; color:var(--nat-red); font-size:18px;">Total Budget: ${fmt(payrollTarget)}</h4>
+    </div>
+
+    <div class="grid-2">
+      <div class="section-card">
+        <h4 class="section-title">Starting Pitchers</h4>
+        ${spList}
+      </div>
+      <div class="section-card">
+        <h4 class="section-title">Bullpen</h4>
+        ${rpList}
+      </div>
+    </div>
+
+    <div class="section-card" style="margin-top:10px;">
+      <h4 class="section-title">Lineup (Batting Order)</h4>
+      ${lineupTable}
+    </div>
+  `;
+}
+
+// ---- Share buttons & live URL sync ----
+function buildShareURL(){
+  const state = currentShareState();
+  const token = encodeState(state);
+  const url = new URL(window.location.href);
+  url.searchParams.delete('s');
+  url.hash = '';
+  url.searchParams.set('s', token);
+  return url.toString();
+}
+
+document.getElementById('copyLink').onclick = async () => {
+  const link = buildShareURL();
+  try{
+    await navigator.clipboard.writeText(link);
+    alert('Share URL copied to clipboard!');
+  }catch{
+    prompt('Copy this URL:', link);
+  }
+};
+
+document.getElementById('shareTwitter').onclick = () => {
+  const link = buildShareURL();
+  const text = `Build your 2026 Nationals roster:\n`;
+  const intent = new URL('https://twitter.com/intent/tweet');
+  intent.searchParams.set('text', text);
+  intent.searchParams.set('url', link);
+  intent.searchParams.set('hashtags', 'Nationals,MLB,Offseason');
+  window.open(intent.toString(), '_blank', 'noopener,noreferrer');
+};
+
+// Keep URL in sync as users edit (optional but handy)
+function syncAddressBar(){
+  const token = encodeState(currentShareState());
+  const url = new URL(window.location.href);
+  url.searchParams.set('s', token);
+  window.history.replaceState(null, '', url);
+}
+
+// Modal wiring
+const summaryModal = document.getElementById('summaryModal');
+const summaryContent = document.getElementById('summaryContent');
+document.getElementById('showSummary').onclick = ()=>{
+  syncLineupWithRoster();
+  summaryContent.innerHTML = buildSummaryHtml();
+  summaryModal.style.display = 'flex';
+};
+document.getElementById('closeSummary').onclick = ()=>{ summaryModal.style.display = 'none'; };
+document.getElementById('closeSummaryBottom').onclick = ()=>{ summaryModal.style.display = 'none'; };
+summaryModal.addEventListener('click', (e)=>{ if (e.target === summaryModal) summaryModal.style.display = 'none'; });
+
+// Ensure lineup sync after any render
+function renderAll(){
+  renderPlayers();renderRoster();renderDHSelector();renderBudget();
+  syncLineupWithRoster(); renderLineup();
+  syncAddressBar(); // update share token in the URL
+}
+
+renderAll();
+</script>
+</body>
+</html>
